@@ -311,6 +311,53 @@ $
   Since $cX_n$ is compact and $overline(u)$ is continuous, every limit point of the average strategy is a maximizer of $overline(u)$, that is, a best response. Hence the average strategy converges almost surely to the set of best responses, and to the best response itself if it is unique.
 ]
 
+#exercise[
+  Consider a finite normal-form game and fix player $i$. Suppose that in every round $t = 1, ..., T$, the joint action profile of all other players is drawn independently from a fixed distribution, so that the expected utility vector is constant:
+  $
+    EE[vg^((t)) | F_(t-1)] = overline(vg) in RR^(|A_i|).
+  $
+  Show that, almost surely, if player $i$ has sublinear external regret, then player $i$ also has sublinear swap regret.
+] <ex-external-implies-swap>
+
+#proof[
+  Let $A = A_i$ be the action set of player $i$, and let $x_a^((t))$ be the probability placed on action $a in A$ by player $i$ at round $t$. Recall that swap regret is defined as:
+  $
+    "SwapReg"^((T)) = max_(Q) sum_(t=1)^T chevron.l vg^((t)), Q vx^((t)) - vx^((t)) chevron.r = sum_(a in A) max_(b in A) sum_(t=1)^T x_a^((t)) (g_b^((t)) - g_a^((t))),
+  $
+  where the maximum is over all column-stochastic matrices $Q$. 
+
+  Define the time-averaged strategy played by the learner up to round $T$ as $overline(vx)^((T)) := 1/T sum_(t=1)^T vx^((t))$. As established in the previous proof, the sequence of differences between realized and expected utilities forms a bounded martingale difference sequence. By the martingale strong law of large numbers, the empirical averages converge almost surely to their expectations:
+  $
+    1/T sum_(t=1)^T x_a^((t)) (g_b^((t)) - g_a^((t))) - 1/T sum_(t=1)^T x_a^((t)) (overline(g)_b - overline(g)_a) quad limits(-->)^"a.s." quad 0
+  $
+  simultaneously for all pairs $(a, b) in A times A$. Therefore,
+  $
+    1/T "SwapReg"^((T)) - sum_(a in A) max_(b in A) { overline(x)_a^((T)) (overline(g)_b - overline(g)_a) } quad limits(-->)^"a.s." quad 0.
+  $
+
+  Now consider the expected gain term for any action $a$ with $overline(x)_a^((T)) > 0$. Let $b^* in argmax_(b in A) overline(g)_b$ be any pure best response against the stationary environment. Then:
+  $
+    max_(b in A) { overline(x)_a^((T)) (overline(g)_b - overline(g)_a) } = overline(x)_a^((T)) (max_(b in A) overline(g)_b - overline(g)_a) = overline(x)_a^((T)) (overline(g)_(b^*) - overline(g)_a).
+  $
+  Summing this identity over all actions $a in A$, we obtain:
+  $
+    sum_(a in A) max_(b in A) { overline(x)_a^((T)) (overline(g)_b - overline(g)_a) }
+    &= sum_(a in A) overline(x)_a^((T)) (overline(g)_(b^*) - overline(g)_a) \
+    &= overline(g)_(b^*) sum_(a in A) overline(x)_a^((T)) - sum_(a in A) overline(x)_a^((T)) overline(g)_a \
+    &= overline(g)_(b^*) - chevron.l overline(vg), overline(vx)^((T)) chevron.r \
+    &= max_(xhat in Delta(A)) chevron.l overline(vg), xhat chevron.r - chevron.l overline(vg), overline(vx)^((T)) chevron.r.
+  $
+  Notice that the right-hand side is precisely the expected per-round external regret against the static environment. By the previous convergence result, since the learner has sublinear external regret, $overline(vx)^((T))$ converges almost surely to a best response against $overline(vg)$, which implies:
+  $
+    max_(xhat in Delta(A)) chevron.l overline(vg), xhat chevron.r - chevron.l overline(vg), overline(vx)^((T)) chevron.r quad limits(-->)^"a.s." quad 0.
+  $
+  It follows immediately that:
+  $
+    1/T "SwapReg"^((T)) quad limits(-->)^"a.s." quad 0,
+  $
+  so the learner incurs sublinear swap regret almost surely.
+]
+
 
 == Learning a Nash equilibrium in two-player zero-sum games <sec-learning-zero-sum>
 
