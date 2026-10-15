@@ -54,42 +54,74 @@ At each round $t$, the learner chooses a strategy using information from earlier
 
 For a finite action set $A$, a _deterministic action_ means directly choosing and playing one action $a in A$. A _randomized strategy_ is a distribution $vx in Delta(A)$ where the learner samples and plays an action $a$ from the distribution. For example, in a coin game, $(0.7, 0.3)$ is the strategy of playing Heads with probability $0.7$ and Tails with probability $0.3$.
 
-In the _full-information_ feedback setting the learner observes the entire utility function $u^((t)): X -> RR$ after choosing $vx^((t)) in X$. In a normal-form game, this means learning the utility of every action including the ones not played. The learner then evaluates how any strategy would have performed before choosing for round $t+1$. This model is directly tied to online convex optimization because we observe the entire utility function and can directly optimize based on it.
+In the _full-information_ feedback setting the learner observes the entire utility function $u^((t)): cX -> RR$ after choosing $vx^((t)) in cX$. In a normal-form game, the strategy space is $cX = Delta(A)$ and payoffs are multilinear in the players' mixed strategies. Consequently, the learner's utility at round $t$ is strictly _linear_ in its own strategy $vx$:
+$
+  u^((t))(vx) = sum_(a in A) x_a g_a^((t)) = chevron.l vg^((t)), vx chevron.r,
+$
+where $vg^((t)) = (g_a^((t)))_(a in A)$ is the vector of values for each of the actions the learner can pick. This means learning the utility of every action including the ones not played. In other words, full-information feedback is revealed directly via the utility gradient vector $vg^((t))$.
 
-In the _bandit_ feedback setting, the learner only observes the realized utility of the action actually played. For a randomized strategy, that's the utility of the sampled action, not the expected utility $u^((t))(vx^((t)))$ of the distribution itself. The utilities of unplayed actions, the counterfactuals, stay hidden. Bandit algorithms have to work around this by building a gradient estimator that extracts information about the unseen utilities from the strategy played and the one piece of feedback observed.
+#example[Payoff matrix and gradient feedback in Rock-Paper-Scissors][
+  Consider a two-player zero-sum game of Rock-Paper-Scissors with action set $A = {"Rock", "Paper", "Scissors"}$ and strategy space $cX = Delta(A)$. Let our payoff matrix be
+  $
+    U = mat(
+       0, -1, +1;
+      +1,  0, -1;
+      -1, +1,  0;
+    ).
+  $
+  If our mixed strategy is $vx^((t))$ and the opponent plays $vy^((t))$, our utility is $u^((t))(vx) = vx^top U vy^((t))$. Under full information, the environment provides feedback by revealing $u^((t))$ directly via its gradient vector:
+  $
+    vg^((t)) := U vy^((t)) = vec(
+      u("Rock", vy^((t))),
+      u("Paper", vy^((t))),
+      u("Scissors", vy^((t)))
+    ).
+  $
+  The vector $vg^((t))$ contains the exact counterfactual utilities for all three pure actions against the opponent's strategy $vy^((t))$.
+]
 
-While the bandit setting may seem more intuitive or natural as a ting point for learning about learning, the full information case is a simplified model, from which we could build the bandit setting later on. 
+The learner then evaluates how any strategy would have performed before choosing for round $t+1$. This model is directly tied to online convex optimization because we observe the entire utility function and can directly optimize based on it.
+
+In the _bandit_ feedback setting, the learner only observes the realized utility of the action actually played. For a randomized strategy, that's the utility of the sampled action, not the expected utility $u^((t))(vx^((t)))$ of the distribution itself. The utilities of unplayed actions, the counterfactuals, stay hidden. Bandit algorithms have to work around this by building a gradient estimator $tilde(vg)^((t))$ that extracts information about the unseen utilities from the strategy played and the one piece of feedback observed.
+
+While the bandit setting may seem more intuitive or natural as a starting point for learning about learning, the full information case is a simplified model, from which we can build the #lecture-link("bandit", <sec-normal-form>)[bandit setting] later on.
 
 Strategy and feedback are two independent choices. The strategy axis is about what the learner plays, either one action or a sample from a full distribution. The feedback axis is about what comes back afterward, either the whole utility function $u^((t))$ including counterfactuals or a single real number. These choices can be combined freely. For example, playing a deterministic action does not imply bandit feedback: the learner can play one action and still observe the entire utility function $u^((t))$.
 
 
 == Notable choices of transformations $Phi$ <sec-regret-transformations>
-The size of the set of transformations $Phi$ considered by the player defines
-a natural notion of how "rational" the agent is. There are several choices of interest for $Phi$ for a normal-form strategy space $cX = Delta(A)$.
-- $Phi =$ set of _all_ stochastic matrices, mapping $Delta(A) -> Delta(A)$. This notion of $Phi$-regret is known under the name _swap regret_. If the swap regret of every player grows sublinearly in $T$, then the average correlated distribution of play converges to the set of #lecture-link("correlated", <def-ce>)[correlated equilibria]. Swap regret was defined by #cite(<blum2007external>, form: "prose") as a strengthening of internal regret. The link between internal regret and correlated equilibria was first shown by #cite(<foster1997calibrated>, form: "prose") using calibrated forecasts, and then by #cite(<hart2000simple>, form: "prose") using a simple regret-based procedure.
 
-  For example, in rock-paper-scissors, swap regret can compare the actions actually played against replacing every action at once, such as rock with paper, scissors with rock, and paper with scissors.
-  In matrix form, $Phi^"swap" = {vx |-> Q vx : Q >= 0, thin vone^top Q = vone^top}$, that is, $Q$ is column-stochastic: column $a$ of $Q$ gives the replacement distribution for action $a$.
+The size of the set of transformations $Phi$ considered by the player defines a natural notion of how "rational" the agent is. There are several choices of interest for $Phi$ for a normal-form strategy space $cX = Delta(A)$.
 
-  #align(center, image(
-    "figures/learning_intro/swap_regret.svg",
-    width: 12.6cm,
-    alt: "Rock-paper-scissors timeline: every action actually played at times 1 through 7 is replaced, rock by paper, scissors by rock, and paper by scissors.",
-  ))
-- $Phi =$ set of all "probability mass transport" on $cX$, defined as
-  $Phi = {phi.alt_(a-> b)}_(a, b in A)$, where
-  $
-    (
-      phi.alt_(a-> b)(vx)
-    )_s := cases(
-      0 & "if " s = a quad ("remove mass from " a "..."),
-      x_b + x_a & "if " s = b quad ("... and give it to " b),
-      x_s & "otherwise."
-    )
-  $
-  This is known as _internal regret_. Its transformations are action-to-action switches. Each such switch moves all probability mass from one action onto another action.
+=== Swap regret
 
-  For example, in rock-paper-scissors, the transformation $phi.alt_("scissors" -> "rock")$ compares the actions actually played against playing rock whenever scissors was played, leaving every other action unchanged.
+Here, $Phi$ is the set of _all_ stochastic matrices mapping $Delta(A) -> Delta(A)$. This notion of $Phi$-regret is known as _swap regret_. If the swap regret of every player grows sublinearly in $T$, then the average correlated distribution of play converges to the set of #lecture-link("correlated", <def-ce>)[correlated equilibria]. Swap regret was defined by #cite(<blum2007external>, form: "prose") as a strengthening of internal regret. The link between internal regret and correlated equilibria was first shown by #cite(<foster1997calibrated>, form: "prose") using calibrated forecasts, and then by #cite(<hart2000simple>, form: "prose") using a simple regret-based procedure.
+
+In matrix form,
+$
+  Phi^"swap" = {vx |-> Q vx : Q >= 0, thin vone^top Q = vone^top},
+$
+that is, $Q$ is column-stochastic: column $a$ of $Q$ gives the replacement distribution for action $a$. For example, in Rock-Paper-Scissors, swap regret can compare the actions actually played against replacing every action at once, such as rock with paper, scissors with rock, and paper with scissors.
+
+#align(center, image(
+  "figures/learning_intro/swap_regret.svg",
+  width: 12.6cm,
+  alt: "Rock-paper-scissors timeline: every action actually played at times 1 through 7 is replaced, rock by paper, scissors by rock, and paper by scissors.",
+))
+
+=== Internal regret
+
+Here, $Phi$ is the set of all "probability mass transports" on $cX$, defined as $Phi = {phi.alt_(a -> b)}_(a, b in A)$, where
+$
+  (
+    phi.alt_(a -> b)(vx)
+  )_s := cases(
+    0 & "if " s = a quad ("remove mass from " a "..."),
+    x_b + x_a & "if " s = b quad ("... and give it to " b),
+    x_s & "otherwise."
+  )
+$
+This is known as _internal regret_. Its transformations are action-to-action switches, each moving all probability mass from one action onto another action. For example, in Rock-Paper-Scissors, the transformation $phi.alt_("scissors" -> "rock")$ compares the actions actually played against playing rock whenever scissors was played, leaving every other action unchanged.
 
   #align(center, image(
     "figures/learning_intro/internal_regret.svg",
@@ -100,18 +132,59 @@ a natural notion of how "rational" the agent is. There are several choices of in
     When all agents in a multiplayer general-sum normal-form game play so that their internal or swap regret grows sublinearly, their average correlated distribution of play converges to the set of _correlated equilibria_ of the game.
   ] <thmce-informal>
 
-  In sequential games, the above concept extends to $Phi =$ a particular set of linear transformations called _trigger deviation functions_. It is known that in this case the $Phi$-regret can be efficiently bounded with a polynomial dependence on the size of the game tree. The reason why this choice of deviation functions is important is given by the following fact.
+#block(inset: (left: 0pt))[
+  In sequential games, this concept extends to $Phi$ chosen as a particular set of linear transformations called _trigger deviation functions_. In this case, $Phi$-regret can be efficiently bounded with a polynomial dependence on the size of the game tree.
+
   #theorem[Informal][
     When all agents in a multiplayer general-sum extensive-form game play so that their $Phi$-regret relative to trigger deviation functions grows sublinearly, their average correlated distribution of play converges to the set of _extensive-form correlated equilibria_ of the game.
   ]
+]
 
-- $Phi =$ constant transformations. In this case, we are only requiring that the player not regret substituting _all_ of the strategies they played with the _same_ strategy $hat(vx) in Delta(A)$. $Phi$-regret according to this set of transformations $Phi$ is usually called _external_ regret, or more simply just _regret_. While this seems like an extremely restricted notion of rationality, it actually turns out to be already extremely powerful. We will spend the rest of this class to see why.
-  #theorem[Informal; formal version in @thmce-formal][
-    When all agents in a multiplayer general-sum normal-form game play so that their external regret grows sublinearly, their average correlated distribution of play converges to the set of _coarse correlated equilibrium_ of the game.
-  ] <thmcce-informal>
-  #corollary[Informal][
-    When all agents in a two-player zero-sum normal-form game play so that their external regret grows sublinearly, their average strategies converge to the set of _Nash equilibria_ of the game.
-  ]
+=== External regret
+
+Here, $Phi$ consists only of constant transformations $Phi^"const" = {vx |-> xhat}_(xhat in cX)$. We only require that the player not regret substituting _all_ of the strategies they played with the _same_ fixed strategy $xhat in Delta(A)$.
+
+$Phi$-regret according to this set of transformations is usually called _external regret_, or simply _regret_. While this seems like an extremely restricted notion of rationality, it is already remarkably powerful.
+
+#theorem[Informal; formal version in @thmce-formal][
+  When all agents in a multiplayer general-sum normal-form game play so that their external regret grows sublinearly, their average correlated distribution of play converges to the set of _coarse correlated equilibrium_ of the game.
+] <thmcce-informal>
+
+#corollary[Informal][
+  When all agents in a two-player zero-sum normal-form game play so that their external regret grows sublinearly, their average strategies converge to the set of _Nash equilibria_ of the game.
+]
+
+=== Summary of equilibrium approximation guarantees
+
+The table below summarizes how each restriction of the transformation class $Phi$ maps directly to a game-theoretic equilibrium concept, along with the precise quantitative rate $epsilon$ achieved by the average joint play $vmu^((T))$:
+
+#align(center, table(
+  columns: (1.3fr, 1.4fr, 1.4fr, 1.5fr),
+  align: (col, row) => (
+    if col == 3 { center + horizon } else { left + horizon }
+  ),
+  stroke: (x, y) => if y == 0 {
+    (bottom: 0.8pt + black, top: 0.8pt + black)
+  } else if y == 5 {
+    (bottom: 0.8pt + black)
+  } else {
+    (bottom: 0.3pt + luma(200))
+  },
+  fill: (col, row) => if row == 0 { rgb("f4f6fa") } else { none },
+  inset: (x: 8pt, y: 7pt),
+  table.header(
+    [*Regret Type*],
+    [*Transformation Set $Phi$*],
+    [*Equilibrium Target*],
+    [*Guarantee ($epsilon$)*]
+  ),
+  [External Regret], [Constant maps $Phi^"const"$], [Coarse Correlated (CCE)], [$epsilon = max_i "Reg"_i^((T)) / T$],
+  [External (Zero-sum)], [Constant maps $Phi^"const"$], [Nash Equilibrium], [$"Nash gap" = ("Reg"_1^((T)) + "Reg"_2^((T))) / T$],
+  [Swap Regret], [Stochastic maps $Phi^"swap"$], [Correlated (CE)], [$epsilon = max_i (Phi"-Reg"_i^((T))) / T$],
+  [Internal Regret], [Pairwise swaps $Phi^"int"$], [Correlated (CE)], [$epsilon = |A| max_i (Phi"-Reg"_i^((T))) / T$],
+  [Trigger Regret], [Trigger continuations], [Extensive-form CE (EFCE)], [$epsilon = |A| max_i (Phi"-Reg"_i^((T))) / T$],
+))
+
 
 #exercise[Comparing external, internal, and swap regret][
   Fix a finite action set $A$, and consider a learner that plays $vx^((1)), ..., vx^((T)) in Delta(A)$ against linear utilities $u^((1)), ..., u^((T))$. For $a, b in A$ write
@@ -293,6 +366,10 @@ A point $(vx , vy) in cX times cY$ has zero saddle point gap if and only if it i
     & #h(5mm) = gamma(overline(vx)^((T)), overline(vy)^((T))).
   $
   Letting $T -> oo$ and using the sublinearity of regret, we obtain the statement.
+]
+
+#remark[Convergence of averages vs. last-iterate convergence][
+  The convergence guarantee of @thm-regret-gap applies strictly to the *average* of the strategies $(overline(vx)^((T)), overline(vy)^((T)))$, *not* to the last iterate $(vx^((T)), vy^((T)))$. In fact, under standard no-regret algorithms like Multiplicative Weights Update (MWU) or Online Gradient Descent (OGD), the last-iterate trajectory typically cycles around the equilibrium rather than converging to it. To guarantee convergence of the actual *current strategies* (last-iterate convergence), additional algorithmic structure is required, such as *Optimistic OGD* or *Optimistic MWU*.
 ]
 
 == Proof of the minimax theorem <sec-learning-minimax>
