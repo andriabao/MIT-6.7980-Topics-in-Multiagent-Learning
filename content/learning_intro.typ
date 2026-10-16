@@ -84,7 +84,7 @@ The learner then evaluates how any strategy would have performed before choosing
 
 In the _bandit_ feedback setting, the learner only observes the realized utility of the action actually played. For a randomized strategy, that's the utility of the sampled action, not the expected utility $u^((t))(vx^((t)))$ of the distribution itself. The utilities of unplayed actions, the counterfactuals, stay hidden. Bandit algorithms have to work around this by building a gradient estimator $tilde(vg)^((t))$ that extracts information about the unseen utilities from the strategy played and the one piece of feedback observed.
 
-While the bandit setting may seem more intuitive or natural as a starting point for learning about learning, the full information case is a simplified model, from which we can build the #lecture-link("bandit", <sec-normal-form>)[bandit setting] later on.
+While the bandit setting may seem more intuitive or natural as a starting point for learning about learning, the full information case is a simplified model, from which we can build the #lecture-link("bandit")[bandit setting] later on.
 
 Strategy and feedback are two independent choices. The strategy axis is about what the learner plays, either one action or a sample from a full distribution. The feedback axis is about what comes back afterward, either the whole utility function $u^((t))$ including counterfactuals or a single real number. These choices can be combined freely. For example, playing a deterministic action does not imply bandit feedback: the learner can play one action and still observe the entire utility function $u^((t))$.
 
